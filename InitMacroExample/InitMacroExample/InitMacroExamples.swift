@@ -6,12 +6,6 @@ public struct Person {
     let age: Int
 }
 
-@Init(defaults: ["balance": 100.0])
-public class BankAccount {
-    var accountNumber: String
-    var balance: Double
-}
-
 @Init(wildcards: ["title"])
 public class Book {
     var title: String?

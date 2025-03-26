@@ -52,41 +52,6 @@ final class InitMacroTests: XCTestCase {
         #endif
     }
 
-    func test_initMacro_asClassWithDefaults_expandsCorrectly() throws {
-        #if canImport(InitMacroImplementation)
-        assertMacroExpansion(
-            """
-            @Init(defaults: ["age": 21, "cash": nil, "name": "Leo"])
-            public final class Test {
-                let age: Int
-                let cash: Double?
-                let name: String
-            }
-            """,
-            expandedSource:
-            """
-
-            public final class Test {
-                let age: Int
-                let cash: Double?
-                let name: String
-
-                public init(
-                    age: Int = 21,
-                    cash: Double? = nil,
-                    name: String = "Leo"
-                ) {
-                    self.age = age
-                    self.cash = cash
-                    self.name = name
-                }
-            }
-            """,
-            macros: macros
-        )
-        #endif
-    }
-
     func test_initMacro_asClassWithUnderscored_expandsCorrectly() throws {
         #if canImport(InitMacroImplementation)
         assertMacroExpansion(
@@ -114,87 +79,6 @@ final class InitMacroTests: XCTestCase {
                     self.age = age
                     self.cash = cash
                     self.name = name
-                }
-            }
-            """,
-            macros: macros
-        )
-        #endif
-    }
-
-    func test_initMacro_asClassWithDefaultsAndUnderscored_expandsCorrectly() throws {
-        #if canImport(InitMacroImplementation)
-        assertMacroExpansion(
-            """
-            @Init(
-                defaults: ["age": 21, "name": "Leo"],
-                wildcards: ["age", "cash"]
-            )
-            public final class Test {
-                let age: Int
-                let cash: Double?
-                let name: String
-            }
-            """,
-            expandedSource:
-            """
-
-            public final class Test {
-                let age: Int
-                let cash: Double?
-                let name: String
-
-                public init(
-                    _ age: Int = 21,
-                    _ cash: Double?,
-                    name: String = "Leo"
-                ) {
-                    self.age = age
-                    self.cash = cash
-                    self.name = name
-                }
-            }
-            """,
-            macros: macros
-        )
-        #endif
-    }
-
-    func test_initMacro_asClassWithDefaultsArray_expandsCorrectly() throws {
-        #if canImport(InitMacroImplementation)
-        assertMacroExpansion(
-            """
-            @Init(defaults: ["removeTraits": [AccessibilityTraits.isButton]])
-            public struct AccessibilityInformation {
-                public let id: String
-                public let description: String
-                public let traits: AccessibilityTraits
-                public let removeTraits: AccessibilityTraits
-
-                public static let unknown = "unknown"
-            }
-            """,
-            expandedSource:
-            """
-
-            public struct AccessibilityInformation {
-                public let id: String
-                public let description: String
-                public let traits: AccessibilityTraits
-                public let removeTraits: AccessibilityTraits
-
-                public static let unknown = "unknown"
-
-                public init(
-                    id: String,
-                    description: String,
-                    traits: AccessibilityTraits,
-                    removeTraits: AccessibilityTraits = [AccessibilityTraits.isButton]
-                ) {
-                    self.id = id
-                    self.description = description
-                    self.traits = traits
-                    self.removeTraits = removeTraits
                 }
             }
             """,
@@ -472,39 +356,6 @@ final class InitMacroTests: XCTestCase {
                     displayResult: Bool
                 ) {
                     self.x = x
-                    self.y = y
-                    self.displayResult = displayResult
-                }
-            }
-            """,
-            macros: macros
-        )
-        #endif
-    }
-    
-    func test_initMacro_implicitDefaults() throws {
-        #if canImport(InitMacroImplementation)
-        assertMacroExpansion(
-            """
-            @Init
-            struct RandomPoint {
-                let x: Int = 5
-                var y: Int
-                var displayResult: Bool = true
-            }
-            """,
-            expandedSource:
-            """
-
-            struct RandomPoint {
-                let x: Int = 5
-                var y: Int
-                var displayResult: Bool = true
-
-                init(
-                    y: Int,
-                    displayResult: Bool = true
-                ) {
                     self.y = y
                     self.displayResult = displayResult
                 }

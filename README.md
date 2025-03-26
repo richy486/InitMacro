@@ -1,5 +1,11 @@
 # InitMacro
 
+### Original Repo 
+
+This is a fork of https://github.com/LeonardoCardoso/InitMacro for custom inits.
+
+### Description
+
 Read my article on Macros in [TradeRepublic](https://github.com/traderepublic)'s engineering blog: [Get Ready for Swift Macros](https://engineering.traderepublic.com/get-ready-for-swift-macros-fe21d3867e02)
 
 This repo showcases a Swift Macro implementation that generates initializers for classes and structs. It's intended as a playground to explore this fantastic new feature in Swift.
@@ -10,9 +16,9 @@ Contributions are highly encouraged and warmly welcomed. Feel free to contribute
 
 ## Parameters
 
-### `defaults: [String: Any]`
+### `customDefaultName: String?`
 
-Set this if there are properties that will have an initial value.
+Should an additional init be generated with `customDefaults` as the default argument. 
 
 ### `wildcards: [String]`
 
@@ -28,7 +34,7 @@ Originally, this macro was built with public initializers in mind, since interna
 
 ```swift
 @Init(
-	defaults: [String: Any], // default [:]
+  customDefaultName: String?, // default nil
 	wildcards: [String], // default []
 	public: Bool // default true
 )

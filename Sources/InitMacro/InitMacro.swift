@@ -2,7 +2,7 @@
 ///
 /// Example:
 ///
-///   @Init(defaults: [:], wildcards: [], public: true)
+///   @Init(wildcards: [], public: true)
 ///   public final class Test {
 ///       let age: Int
 ///       let cash: Double?
@@ -27,16 +27,16 @@
 ///        }
 ///    }
 ///
-///    - Parameters:
-///      - defaults: Dictionary containing defaults for the specificed properties.
-///      - wildcards: Array containing the specificed properties that should be wildcards.
-///      - public: The flag to indicate if the init is public or not.
+/// - Parameters:
+///   - customDefaultName: Should an init with the `customDefaultName` be generated.
+///   - wildcards: Array containing the specified properties that should be wildcards.
+///   - public: The flag to indicate if the init is public or not.
 @attached(member, names: named(init))
 public macro Init(
-    defaults: [String: Any] = [:],
-    wildcards: [String] = [],
-    public: Bool = true
+  customDefaultName: String? = nil,
+  wildcards: [String] = [],
+  public: Bool = true
 ) = #externalMacro(
-    module: "InitMacroImplementation",
-    type: "InitMacro"
+  module: "InitMacroImplementation",
+  type: "InitMacro"
 )
