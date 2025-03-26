@@ -40,3 +40,6 @@ public macro Init(
   module: "InitMacroImplementation",
   type: "InitMacro"
 )
+
+@attached(peer, names: prefixed(description_))
+public macro Description(text: String) = #externalMacro(module: "InitMacroImplementation", type: "DescriptionMacro")

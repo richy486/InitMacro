@@ -3,6 +3,17 @@ import SwiftDiagnostics
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
+import SwiftCompilerPlugin
+
+public struct DescriptionMacro: PeerMacro {
+  public static func expansion(
+    of node: AttributeSyntax,
+    providingPeersOf declaration: some DeclSyntaxProtocol,
+    in context: some MacroExpansionContext
+  ) throws -> [DeclSyntax] {
+    return []
+  }
+}
 
 /// Generates a public initializer.
 ///
@@ -109,10 +120,11 @@ struct InitMacro: MemberMacro {
   }
   
   private static func declarationSyntax(members: MemberBlockItemListSyntax, wildcards: [String], accessorType: Bool, customDefaultName: String? = nil) throws -> InitializerDeclSyntax {
+    var comments = String()
     var parameters = [String]()
     var assignments = [String]()
     
-    (parameters, assignments) = makeData(
+    (comments, parameters, assignments) = makeData(
       wildcards: wildcards,
       members: members,
       customDefaultName: customDefaultName
@@ -128,7 +140,7 @@ struct InitMacro: MemberMacro {
     
     let initDeclSyntax = try InitializerDeclSyntax(
       SyntaxNodeString(
-        stringLiteral: "\(accessorType ? "public " : "")init(\n\(parameters.joined(separator: ",\n"))\n)"
+        stringLiteral: "\(comments)\(accessorType ? "public " : "")init(\n\(parameters.joined(separator: ",\n"))\n)"
       ),
       bodyBuilder: { .init(initBody) }
     )
@@ -183,23 +195,55 @@ struct InitMacro: MemberMacro {
     wildcards: [String],
     members: MemberBlockItemListSyntax,
     customDefaultName: String?
-  ) -> ([String], [String]) {
+  ) -> (String, [String], [String]) {
     
     var parameters = [String]()
     var assignments = [String]()
+    var comments: String = 
+      """
+      /// Initializes a with optional parameters.
+      ///
+      /// - Parameters:
+      
+      """
     
     if let customDefaultName {
       parameters.append("_ \(customDefaultName): Self")
     }
-    
+
     for member in members {
       if let syntax = member.decl.as(VariableDeclSyntax.self),
          case let bindings = syntax.bindings,
          let pattern = bindings.first,
          let identifier = pattern.pattern.as(IdentifierPatternSyntax.self)?.identifier,
          let type = pattern.typeAnnotation?.type,
-         !(syntax.bindingSpecifier.tokenKind == .keyword(.let) && pattern.initializer != nil) {
+         !(syntax.bindingSpecifier.tokenKind == .keyword(.let) && pattern.initializer != nil)
+      {
+        let comment: String
+        let attributeComments: [String] = syntax.attributes.compactMap { attribute /*-> String?*/ in
+          guard let attributeSyntax = attribute.as(AttributeSyntax.self) else { return nil }
+          
+          guard attributeSyntax.attributeName.description == "Description" else { return nil }
+          
+
+          let textArgument = attributeSyntax.arguments?.as(LabeledExprListSyntax.self)?.first?.expression.as(StringLiteralExprSyntax.self)?.segments.first?.as(StringSegmentSyntax.self)?.content.text
+          
+          return textArgument
+        }
         
+        if let first = attributeComments.first {
+          comment = "///   - \(identifier): \(first)"
+        } else {
+          comment = "///   - \(identifier): TODO: add comment"
+        }
+        
+        
+        comments.append(comment + "\n")
+                
+        guard let type = pattern.typeAnnotation?.type else {
+          fatalError()
+        }
+            
         let shouldUnderscoreParameter = wildcards.contains("\(identifier)")
         let identifierPrefix = "\(shouldUnderscoreParameter ? "_ " : "")"
         
@@ -230,7 +274,7 @@ struct InitMacro: MemberMacro {
       }
     }
     
-    return (parameters, assignments)
+    return (comments, parameters, assignments)
   }
 }
 
