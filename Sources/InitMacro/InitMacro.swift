@@ -29,11 +29,15 @@
 ///
 /// - Parameters:
 ///   - customDefaultName: Should an init with the `customDefaultName` be generated.
+///   - initTitle: Title for the init comments.
+///   - customDefaultInitTitle: Title for the custom default init comments.
 ///   - wildcards: Array containing the specified properties that should be wildcards.
 ///   - public: The flag to indicate if the init is public or not.
 @attached(member, names: named(init))
 public macro Init(
   customDefaultName: String? = nil,
+  initTitle: String? = nil,
+  customDefaultInitTitle: String? = nil,
   wildcards: [String] = [],
   public: Bool = true
 ) = #externalMacro(

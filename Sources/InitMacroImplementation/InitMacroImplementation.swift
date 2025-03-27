@@ -86,16 +86,18 @@ struct InitMacro: MemberMacro {
     var wildcards = [String]()
     let members: MemberBlockItemListSyntax
     let typeName: String
+    var initTitle: String? = nil
+    var customDefaultInitTitle: String? = nil
     
     if let decl = declaration.as(ClassDeclSyntax.self) {
-      (accessorType, wildcards, customDefaultName) = prefixAndAttributes(
+      (accessorType, wildcards, customDefaultName, initTitle, customDefaultInitTitle) = prefixAndAttributes(
         accessorPrefix: getModifiers("", decl.modifiers),
         attributes: decl.attributes
       )
       members = decl.memberBlock.members
       typeName = decl.identifier.text
     } else if let decl = declaration.as(StructDeclSyntax.self) {
-      (accessorType, wildcards, customDefaultName) = prefixAndAttributes(
+      (accessorType, wildcards, customDefaultName, initTitle, customDefaultInitTitle) = prefixAndAttributes(
         accessorPrefix: getModifiers("", decl.modifiers),
         attributes: decl.attributes
       )
@@ -106,18 +108,37 @@ struct InitMacro: MemberMacro {
     }
     
     var expansionArray: [DeclSyntax] = []
-    let initDeclSyntax = try declarationSyntax(members: members, wildcards: wildcards, accessorType: accessorType, typeName: typeName)
+    let initDeclSyntax = try declarationSyntax(
+      members: members,
+      wildcards: wildcards,
+      accessorType: accessorType,
+      typeName: typeName,
+      initTitle: initTitle
+    )
     expansionArray.append("\(raw: initDeclSyntax)")
     
     if let customDefaultName {
-      let initCustomDefaultNameDeclSyntax = try declarationSyntax(members: members, wildcards: wildcards, accessorType: accessorType, typeName: typeName, customDefaultName: customDefaultName)
+      let initCustomDefaultNameDeclSyntax = try declarationSyntax(
+        members: members,
+        wildcards: wildcards,
+        accessorType: accessorType,
+        typeName: typeName,
+        initTitle: customDefaultInitTitle ?? initTitle,
+        customDefaultName: customDefaultName
+      )
       expansionArray.append("\(raw: initCustomDefaultNameDeclSyntax)")
     }
     
     return expansionArray
   }
   
-  private static func prefixAndAttributes(accessorPrefix: String, attributes: AttributeListSyntax?) -> (Bool, [String], String?) {
+  private static func prefixAndAttributes(accessorPrefix: String, attributes: AttributeListSyntax?) -> (
+    accessorType: Bool,
+    wildcards: [String],
+    customDefaultName: String?,
+    initTitle: String?,
+    customDefaultInitTitle: String?
+  ) {
     var wildcards = [String]()
     
     // Get attributes for Init macro
@@ -133,7 +154,28 @@ struct InitMacro: MemberMacro {
     } else {
       customDefaultName = nil
     }
+    
+    // initTitle
+    let initTitle: String?
+    if let initTitleAttributes = attributes?
+      .first(where: { "\($0)".contains("initTitle") })?
+      .expression.as(StringLiteralExprSyntax.self)?
+      .segments.first?.as(StringSegmentSyntax.self) {
+      initTitle = "\(initTitleAttributes)"
+    } else {
+      initTitle = nil
+    }
 
+    // customDefaultInitTitle
+    let customDefaultInitTitle: String?
+    if let customDefaultInitTitleAttributes = attributes?
+      .first(where: { "\($0)".contains("customDefaultInitTitle") })?
+      .expression.as(StringLiteralExprSyntax.self)?
+      .segments.first?.as(StringSegmentSyntax.self) {
+      customDefaultInitTitle = "\(customDefaultInitTitleAttributes)"
+    } else {
+      customDefaultInitTitle = nil
+    }
     
     // Analyse the `wildcards` parameter
     if let wildcardsAttributes = attributes?
@@ -157,10 +199,17 @@ struct InitMacro: MemberMacro {
       accessorType = "\(publicAttribute)" == "true"
     }
     
-    return (accessorType, wildcards, customDefaultName)
+    return (accessorType, wildcards, customDefaultName, initTitle, customDefaultInitTitle)
   }
   
-  private static func declarationSyntax(members: MemberBlockItemListSyntax, wildcards: [String], accessorType: Bool, typeName: String, customDefaultName: String? = nil) throws -> InitializerDeclSyntax {
+  private static func declarationSyntax(
+    members: MemberBlockItemListSyntax,
+    wildcards: [String],
+    accessorType: Bool,
+    typeName: String,
+    initTitle: String?,
+    customDefaultName: String? = nil
+  ) throws -> InitializerDeclSyntax {
     var comments = String()
     var parameters = [String]()
     var assignments = [String]()
@@ -169,6 +218,7 @@ struct InitMacro: MemberMacro {
       wildcards: wildcards,
       members: members,
       typeName: typeName,
+      initTitle: initTitle,
       customDefaultName: customDefaultName
     )
     
@@ -194,14 +244,17 @@ struct InitMacro: MemberMacro {
     wildcards: [String],
     members: MemberBlockItemListSyntax,
     typeName: String,
+    initTitle: String?,
     customDefaultName: String?
   ) -> (String, [String], [String]) {
     
     var parameters = [String]()
     var assignments = [String]()
-    var comments: String = 
+    
+    let title = initTitle ?? "Initializes a `\(typeName)`."
+    var comments: String =
       """
-      /// Initializes a `\(typeName)`.
+      /// \(title)
       ///
       /// - Parameters:
       
