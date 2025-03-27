@@ -84,7 +84,8 @@ struct InitMacro: MemberMacro {
     var accessorType = false
     var customDefaultName: String? = nil
     var wildcards = [String]()
-    let members: MemberBlockItemListSyntax?
+    let members: MemberBlockItemListSyntax
+    let typeName: String
     
     if let decl = declaration.as(ClassDeclSyntax.self) {
       (accessorType, wildcards, customDefaultName) = prefixAndAttributes(
@@ -92,60 +93,28 @@ struct InitMacro: MemberMacro {
         attributes: decl.attributes
       )
       members = decl.memberBlock.members
+      typeName = decl.identifier.text
     } else if let decl = declaration.as(StructDeclSyntax.self) {
       (accessorType, wildcards, customDefaultName) = prefixAndAttributes(
         accessorPrefix: getModifiers("", decl.modifiers),
         attributes: decl.attributes
       )
       members = decl.memberBlock.members
-      
+      typeName = decl.identifier.text
     } else {
-      members = nil
-    }
-    
-    guard let members else {
-      fatalError()
+      return []
     }
     
     var expansionArray: [DeclSyntax] = []
-    let initDeclSyntax = try declarationSyntax(members: members, wildcards: wildcards, accessorType: accessorType)
+    let initDeclSyntax = try declarationSyntax(members: members, wildcards: wildcards, accessorType: accessorType, typeName: typeName)
     expansionArray.append("\(raw: initDeclSyntax)")
     
     if let customDefaultName {
-      let initCustomDefaultNameDeclSyntax = try declarationSyntax(members: members, wildcards: wildcards, accessorType: accessorType, customDefaultName: customDefaultName)
+      let initCustomDefaultNameDeclSyntax = try declarationSyntax(members: members, wildcards: wildcards, accessorType: accessorType, typeName: typeName, customDefaultName: customDefaultName)
       expansionArray.append("\(raw: initCustomDefaultNameDeclSyntax)")
     }
     
     return expansionArray
-  }
-  
-  private static func declarationSyntax(members: MemberBlockItemListSyntax, wildcards: [String], accessorType: Bool, customDefaultName: String? = nil) throws -> InitializerDeclSyntax {
-    var comments = String()
-    var parameters = [String]()
-    var assignments = [String]()
-    
-    (comments, parameters, assignments) = makeData(
-      wildcards: wildcards,
-      members: members,
-      customDefaultName: customDefaultName
-    )
-    
-    let initBody: [CodeBlockItemListSyntax.Element] = assignments.enumerated().map { index, assignment in
-      if index == 0 {
-        return "\(raw: assignment)"
-      } else {
-        return "\n\(raw: assignment)"
-      }
-    }
-    
-    let initDeclSyntax = try InitializerDeclSyntax(
-      SyntaxNodeString(
-        stringLiteral: "\(comments)\(accessorType ? "public " : "")init(\n\(parameters.joined(separator: ",\n"))\n)"
-      ),
-      bodyBuilder: { .init(initBody) }
-    )
-    
-    return initDeclSyntax
   }
   
   private static func prefixAndAttributes(accessorPrefix: String, attributes: AttributeListSyntax?) -> (Bool, [String], String?) {
@@ -191,9 +160,40 @@ struct InitMacro: MemberMacro {
     return (accessorType, wildcards, customDefaultName)
   }
   
+  private static func declarationSyntax(members: MemberBlockItemListSyntax, wildcards: [String], accessorType: Bool, typeName: String, customDefaultName: String? = nil) throws -> InitializerDeclSyntax {
+    var comments = String()
+    var parameters = [String]()
+    var assignments = [String]()
+    
+    (comments, parameters, assignments) = makeData(
+      wildcards: wildcards,
+      members: members,
+      typeName: typeName,
+      customDefaultName: customDefaultName
+    )
+    
+    let initBody: [CodeBlockItemListSyntax.Element] = assignments.enumerated().map { index, assignment in
+      if index == 0 {
+        return "\(raw: assignment)"
+      } else {
+        return "\n\(raw: assignment)"
+      }
+    }
+    
+    let initDeclSyntax = try InitializerDeclSyntax(
+      SyntaxNodeString(
+        stringLiteral: "\(comments)\(accessorType ? "public " : "")init(\n\(parameters.joined(separator: ",\n"))\n)"
+      ),
+      bodyBuilder: { .init(initBody) }
+    )
+    
+    return initDeclSyntax
+  }
+  
   private static func makeData(
     wildcards: [String],
     members: MemberBlockItemListSyntax,
+    typeName: String,
     customDefaultName: String?
   ) -> (String, [String], [String]) {
     
@@ -201,7 +201,7 @@ struct InitMacro: MemberMacro {
     var assignments = [String]()
     var comments: String = 
       """
-      /// Initializes a with optional parameters.
+      /// Initializes a `\(typeName)`.
       ///
       /// - Parameters:
       
